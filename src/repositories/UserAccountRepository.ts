@@ -24,4 +24,13 @@ export class UserAccountRepository extends Repository<UserAccount> {
     });
     return useraccount;
   }
+
+  public async findById(id: string): Promise<UserAccount | undefined> {
+    const useraccount = await this.findOne({
+      where: {
+        id,
+      },
+    });
+    return useraccount;
+  }
 }

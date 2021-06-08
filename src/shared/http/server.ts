@@ -6,12 +6,19 @@ import cors from 'cors';
 import routes from './routes';
 import AppError from '@shared/errors/AppError';
 import '@shared/typeorm';
-require('dotenv/config');
+import 'dotenv/config';
+import uploadConfig from '@config/upload';
+import { pagination } from 'typeorm-pagination';
+import Middlewares from '@shared/http/middlewares';
 
 const app = express();
+const middlewares = new Middlewares();
 
 app.use(cors());
 app.use(express.json());
+app.use(middlewares.rateLimiter);
+app.use('/files', express.static(uploadConfig.directory));
+app.use(pagination);
 app.use(routes);
 app.use(errors());
 

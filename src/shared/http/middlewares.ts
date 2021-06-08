@@ -3,6 +3,8 @@ import authConfig from '@config/auth';
 import { NextFunction, Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import { verify } from 'jsonwebtoken';
+import redis from 'redis';
+import { RateLimiterRedis } from 'rate-limiter-flexible';
 
 interface JWTPayload {
   iat: number;
@@ -10,6 +12,18 @@ interface JWTPayload {
   sub: string;
 }
 
+const redisClient = redis.createClient({
+  host: process.env.REDIS_HOST,
+  port: Number(process.env.REDIS_PORT),
+  password: process.env.REDIS_PASS || undefined,
+});
+
+const limiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  keyPrefix: 'ratelimit',
+  points: 5,
+  duration: 1,
+});
 export default class Middleware {
   public isAuthenticated(
     req: Request,
@@ -35,6 +49,19 @@ export default class Middleware {
       return next();
     } catch (error) {
       throw new AppError('Invalid token!', StatusCodes.UNAUTHORIZED);
+    }
+  }
+
+  public async rateLimiter(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      await limiter.consume(req.ip);
+      return next();
+    } catch (error) {
+      throw new AppError('Too many requests', StatusCodes.TOO_MANY_REQUESTS);
     }
   }
 }
